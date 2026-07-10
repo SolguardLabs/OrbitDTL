@@ -1,0 +1,33 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Orbit DTL demo",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--bin", "orbit-dtl"],
+        "filter": {
+          "name": "orbit-dtl",
+          "kind": "bin"
+        }
+      },
+      "args": ["demo"],
+      "cwd": "${workspaceFolder}"
+    },
+    {
+      "name": "Orbit DTL demo JSON",
+      "type": "lldb",
+      "request": "launch",
+      "cargo": {
+        "args": ["build", "--bin", "orbit-dtl"],
+        "filter": {
+          "name": "orbit-dtl",
+          "kind": "bin"
+        }
+      },
+      "args": ["demo", "--json"],
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
