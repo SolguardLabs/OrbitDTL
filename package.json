@@ -1,6 +1,6 @@
 {
   "name": "orbit-dtl",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "description": "Pruebas de integracion para Orbit DTL",
@@ -12,8 +12,9 @@
     "ci:local": "bash scripts/ci.sh",
     "tests:script": "bash scripts/tests.sh",
     "build": "bun scripts/check-js.mjs",
-    "fmt": "prettier --write --config .prettierrc --ignore-path .prettierignore \"tests/**/*.js\" \"scripts/**/*.mjs\"",
-    "fmt:check": "prettier --check --config .prettierrc --ignore-path .prettierignore \"tests/**/*.js\" \"scripts/**/*.mjs\""
+    "inspect": "bun scripts/inspect-report.mjs",
+    "fmt": "prettier --write --config .prettierrc --ignore-path .prettierignore README.md SECURITY.md docs client \"tests/**/*.js\" \"scripts/**/*.mjs\"",
+    "fmt:check": "prettier --check --config .prettierrc --ignore-path .prettierignore README.md SECURITY.md docs client \"tests/**/*.js\" \"scripts/**/*.mjs\""
   },
   "devDependencies": {
     "prettier": "^3.8.3"

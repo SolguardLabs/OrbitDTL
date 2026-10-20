@@ -4,18 +4,22 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const projectRoot = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const checkedDirs = ["tests/helpers", "tests/node"];
+const checkedDirs = ["client", "scripts", "tests/helpers", "tests/node"];
 
 for (const directory of checkedDirs) {
   const absoluteDirectory = resolve(projectRoot, directory);
 
   for (const entry of readdirSync(absoluteDirectory, { withFileTypes: true })) {
-    if (!entry.isFile() || !entry.name.endsWith(".js") || entry.name.endsWith(".test.js")) {
+    if (
+      !entry.isFile() ||
+      !(entry.name.endsWith(".js") || entry.name.endsWith(".mjs")) ||
+      entry.name.endsWith(".test.js")
+    ) {
       continue;
     }
 
     const file = resolve(absoluteDirectory, entry.name);
-    const result = spawnSync(process.execPath, ["--check", file], {
+    const result = spawnSync(process.env.NODE_BIN ?? "node", ["--check", file], {
       cwd: projectRoot,
       encoding: "utf8",
       stdio: "pipe",
