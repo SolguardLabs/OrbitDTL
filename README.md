@@ -1,125 +1,78 @@
-# Orbit DTL
+# OrbitDTL
 
-![banner](./assets/banner.png)
+![Identidad de OrbitDTL](./assets/banner.png)
 
-Orbit DTL es un binario Rust que modela una capa de liquidacion y
-transferencia diferida para flujos multi-activo. El proyecto simula un entorno
-operativo donde participantes, vaults, rutas, sesiones y controles de riesgo
-coordinan ordenes de liquidacion con precios de oraculo y contabilizacion de
-eventos.
+OrbitDTL es un motor de liquidación diferida multi-activo. Coordina intents,
+vaults, rutas, sesiones, precios de oráculo y límites de riesgo en un binario
+Rust. Su salida JSON determinista sirve para conciliación y herramientas de
+operación sin dependencia de servicios externos.
 
-El objetivo del repositorio es ofrecer una base realista para auditoria tecnica
-de protocolos de liquidacion. La implementacion prioriza codigo legible,
-modularidad y una superficie suficientemente amplia para analizar interacciones
-entre contabilidad, pricing, limites de ruta, sesiones y ejecucion final.
+## Flujo de liquidación
 
-## Componentes Principales
-
-- `accounts`: cuentas operativas y saldos por activo.
-- `amount`: aritmetica entera, basis points y operaciones de ratio.
-- `asset`: registro de activos, decimales y parametros de riesgo.
-- `oracle`: cotizacion determinista entre activos.
-- `vault`: reservas, bloqueos, pagos y entradas de liquidez.
-- `routes`: configuracion de rutas de liquidacion entre vaults.
-- `orders`: intents de transferencia y estado de cola.
-- `session`: ventanas de liquidacion y registro de counterflow.
-- `risk`: limites de exposicion por cuenta, ruta y sesion.
-- `ledger`: motor principal de estado, eventos y ejecucion.
-- `cli`: interfaz de consola del binario.
-
-## Requisitos
-
-- Rust estable.
-- Cargo con soporte para `edition = "2021"`.
-- Bun `>= 1.3.0` para ejecutar la suite JavaScript.
-- Bash para los scripts de CI locales.
-
-## Uso
-
-Ejecutar el escenario operativo de ejemplo:
-
-```bash
-cargo run -- demo
+```mermaid
+flowchart LR
+  I[Intent del participante] --> Q[Cola y reserva de origen]
+  Q --> S[Sesión de liquidación]
+  P[Precios por activo] --> C[Cotización]
+  S --> C
+  C --> R[Política de ruta y riesgo]
+  R --> V[Pago del vault destino]
+  V --> B[Beneficiario y operador]
+  R --> E[Eventos y reporte]
 ```
 
-Ejecutar el mismo escenario con salida JSON:
+Cada intent identifica activos, vaults, beneficiario, mínimo recibido, nonce
+y vencimiento. La ruta define límites y comisión. Una sesión agrupa operaciones
+en un slot lógico; el origen consume la reserva y el destino paga el importe
+bruto autorizado. El beneficiario recibe el neto y el operador la comisión.
+
+## Inicio rápido
+
+Requisitos: Rust estable con Cargo, Bun 1.3.14+ y sus respectivas toolchains.
 
 ```bash
-cargo run -- demo --json
-```
-
-La salida JSON incluye cuentas, vaults, sesiones y eventos generados durante la
-ejecucion. Esta salida se usa tambien como contrato de integracion para los
-tests de Node.
-
-## Tests
-
-Ejecutar la suite Rust:
-
-```bash
-cargo test --locked
-```
-
-Ejecutar la suite Node con Bun:
-
-```bash
-bun test --timeout 30000 ./tests/node
-```
-
-Ejecutar ambas suites:
-
-```bash
+bun install --frozen-lockfile
+cargo run --locked -- demo
+cargo run --locked -- demo --json > report.json
+bun run inspect report.json
 bun run test:all
 ```
 
-Ejecutar la validacion completa usada por CI:
+`report.json` contiene cuentas, vaults, sesiones y eventos. El inspector
+`client/report-client.mjs` agrega saldos y pagos por activo como cadenas
+decimales para no convertir los agregados a números de coma flotante.
+
+## Cálculos principales
+
+La cotización usa precios escalados a `10^8` y decimales de cada activo:
+
+```text
+importe_destino = floor(importe_origen × precio_origen × 10^dec_destino
+                        / 10^dec_origen / precio_destino)
+comisión = floor(importe_destino × (fee_bps + relayer_bps) / 10_000)
+neto = importe_destino - comisión
+```
+
+Los productos y sumas de `Amount` se comprueban contra overflow. Antes del
+pago, el motor contrasta límites de ruta, cuenta y sesión; después genera
+`IntentSettled`. Consulte [modelo económico](./docs/modelo-economico.md) para
+un ejemplo con unidades mínimas y reglas de redondeo.
+
+## Verificación
 
 ```bash
 bash scripts/ci.sh
 ```
 
-## Calidad
+CI ejecuta `cargo fmt`, build, tests Rust, Clippy, formato y sintaxis
+JavaScript, y tests de integración Bun en Ubuntu y Windows. La rama
+`production` y el tag anotado `v1.0.0` corresponden a la revisión de
+`Production 1.0.0` en `main`.
 
-El flujo de CI valida:
+- [Arquitectura](./docs/arquitectura.md)
+- [Modelo económico](./docs/modelo-economico.md)
+- [Operación y conciliación](./docs/operacion.md)
+- [Seguridad](./SECURITY.md)
 
-- formato Rust con `cargo fmt`;
-- build completo con `cargo build --all-targets`;
-- tests Rust con `cargo test`;
-- lint Rust con `cargo clippy -D warnings`;
-- formato JavaScript con Prettier;
-- comprobacion sintactica de helpers JavaScript;
-- tests Node con Bun.
-
-Dependabot mantiene actualizaciones para Cargo, npm/Bun y GitHub Actions.
-
-## Estructura
-
-```text
-src/
-  accounts/
-  amount/
-  asset/
-  cli/
-  codec/
-  events/
-  ids/
-  ledger/
-  oracle/
-  orders/
-  risk/
-  routes/
-  session/
-  vault/
-tests/
-  helpers/
-  node/
-  rust_cli_demo.rs
-scripts/
-  ci.sh
-  tests.sh
-```
-
-## Estado Del Proyecto
-
-Orbit DTL es un laboratorio autocontenido. No requiere servicios externos,
-bases de datos ni redes locales para ejecutar el binario o sus tests.
+`src/` contiene el motor, `client/` la lectura de reportes, `tests/` los
+contratos de integración y `scripts/` las verificaciones reproducibles.

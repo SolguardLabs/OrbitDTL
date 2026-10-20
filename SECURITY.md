@@ -1,75 +1,42 @@
-# Seguridad
+# Seguridad de OrbitDTL
 
-Orbit DTL esta disenado como un entorno de laboratorio para revisar sistemas de
-liquidacion diferida, gestion de vaults y control de riesgo en flujos
-multi-activo. El proyecto expone una arquitectura de protocolo realista con
-validaciones de activos, rutas, sesiones, oraculos, limites operativos y eventos
-auditables.
+## Límites del sistema
 
-## Modelo De Seguridad
+El binario opera sobre un ledger determinista: activos, precios, cuentas,
+vaults, rutas e intents registrados en memoria. La CLI de ejemplo no administra
+claves, no firma transacciones y no conecta con redes externas. Los reportes
+JSON son datos de operación; nunca deben tratarse como autorización de pago.
 
-El protocolo se apoya en varias capas de control:
+```mermaid
+flowchart TD
+  O[Orden e IDs] --> A[Activo y ruta habilitados]
+  A --> P[Precio y mínimo recibido]
+  P --> S[Sesión y estado del intent]
+  S --> R[Límites de riesgo]
+  R --> V[Disponibilidad de vaults]
+  V --> L[Ledger y eventos]
+  L --> C[Conciliación]
+```
 
-- registro explicito de activos habilitados;
-- vaults asociados a un unico activo y controlador;
-- rutas configuradas con vault origen, vault destino, limites y parametros de
-  comision;
-- precios con umbral minimo de confianza;
-- intents con beneficiario, importe minimo de salida, deadline y nonce;
-- sesiones de liquidacion con registro de counterflow;
-- motor de riesgo con limites por cuenta, ruta y sesion;
-- eventos serializables para auditoria posterior.
+## Controles comprobables
 
-## Invariantes Esperadas
+- Los importes usan `u128` y operaciones aritméticas comprobadas.
+- Una ruta enlaza activos y vaults concretos y puede deshabilitarse.
+- Cada intent tiene mínimo de salida, vencimiento, nonce y estado de cola.
+- Un vault distingue reserva, saldo bloqueado, entradas y pagos.
+- La autorización de riesgo evalúa límites de ruta, cuenta y sesión antes de
+  mover saldos.
+- Los eventos permiten reconstruir alta, cola, cancelación y liquidación.
 
-Durante la operacion normal se espera que:
+Una prueba aislada de no negatividad no acredita toda la secuencia: la revisión
+debe incluir transiciones y conciliación por activo. El cliente de reportes
+rechaza enteros JSON inseguros y pagos cuyos importes bruto, neto y comisión
+no concilian.
 
-- un vault no liquide activos distintos al activo que tiene asignado;
-- las rutas deshabilitadas no puedan ejecutar liquidaciones;
-- una orden pendiente solo pueda liquidarse una vez;
-- las sesiones registren las operaciones incluidas;
-- los pagos respeten el importe minimo solicitado por el usuario;
-- las comisiones se contabilicen hacia el operador de ruta;
-- los limites de riesgo se evaluen antes de mover fondos;
-- la salida JSON del binario sea determinista para pruebas de integracion.
+## Revisión y comunicación
 
-## Practicas De Desarrollo
-
-El repositorio incluye validaciones automatizadas para reducir regresiones:
-
-- `cargo fmt --all -- --check`;
-- `cargo build --all-targets --locked`;
-- `cargo test --locked`;
-- `cargo clippy --all-targets --all-features --locked -- -D warnings`;
-- `bun run fmt:check`;
-- `bun run build`;
-- `bun test --timeout 30000 ./tests/node`.
-
-Estas comprobaciones se ejecutan en GitHub Actions mediante `scripts/ci.sh`.
-
-## Gestion De Dependencias
-
-Las dependencias Rust quedan fijadas en `Cargo.lock`. Las dependencias de Bun
-quedan fijadas en `bun.lock`. Dependabot revisa actualizaciones de Cargo,
-npm/Bun y GitHub Actions con una cadencia semanal.
-
-## Reporte De Incidencias
-
-Este laboratorio no debe recibir reportes publicos de seguridad como si fuera
-un protocolo desplegado en produccion. Para ejercicios internos, documenta el
-hallazgo con:
-
-- descripcion tecnica reproducible;
-- impacto economico o de disponibilidad;
-- archivos y funciones afectadas;
-- precondiciones necesarias;
-- pasos de reproduccion;
-- propuesta de mitigacion;
-- comandos usados para verificar el resultado.
-
-## Alcance
-
-El alcance de revision incluye el codigo Rust del binario, los scripts de CI,
-los tests Rust, los tests Node y la configuracion de GitHub Actions. Quedan
-fuera integraciones externas, despliegues, claves privadas, infraestructura de
-nube y cualquier red de produccion.
+Para una incidencia técnica, adjuntar revisión Git, comando, escenario,
+precondiciones, saldos antes/después, IDs relacionados y resultado esperado.
+Evitar secretos y datos de terceros en issues públicos. Antes de aceptar
+cambios se ejecutan los controles de [operación](./docs/operacion.md) y CI en
+PR, `main`, `production`, tag y release.

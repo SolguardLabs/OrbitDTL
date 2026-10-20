@@ -2,9 +2,8 @@ name: CI
 
 on:
   push:
-    branches:
-      - main
-      - master
+    branches: [main, production]
+    tags: ["v*"]
   pull_request:
 
 permissions:
@@ -13,7 +12,11 @@ permissions:
 jobs:
   validate:
     name: Formato, build y tests
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
 
     steps:
       - name: Checkout
@@ -29,5 +32,11 @@ jobs:
         with:
           bun-version: 1.3.14
 
+      - name: Instalar Node
+        uses: actions/setup-node@v7
+        with:
+          node-version: "24"
+
       - name: Ejecutar CI
+        shell: bash
         run: bash scripts/ci.sh
